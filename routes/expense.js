@@ -47,4 +47,16 @@ router.get("/category-summary", async (req, res) => {
   }
 });
 
+// Get total expenses (GET)
+router.get("/total", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT SUM(amount) AS total FROM expenses");
+    res.json({ total: result.rows[0].total || 0 });
+  } catch (error) {
+    console.error("Error fetching total expenses:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
 module.exports = router;
