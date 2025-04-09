@@ -40,6 +40,32 @@ router.post("/", validateExpense, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+// Update an expense (PUT)
+router.put("/:id", validateExpense, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { description, amount, category } = req.body;
+  const expenseId = req.params.id;
+
+  try {
+    const result = await pool.query(
+      "UPDATE expenses SET description = $1, amount = $2, category = $3 WHERE id = $4 RETURNING *",
+      [description, amount, category, expenseId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Expense not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 // Get all expenses (GET)
 router.get("/", async (req, res) => {
