@@ -92,6 +92,43 @@ router.get("/category-summary", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+// Get total expenses (GET)
+router.get("/total", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT SUM(amount) AS total FROM expenses");
+    // If no expenses, return 0
+    res.json({ total: result.rows[0].total || 0 });
+  } catch (error) {
+    console.error("Error fetching total expenses:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+  // Update an expense (PUT)
+router.put("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { description, amount, category } = req.body;
+
+    if (!description || !amount || !category) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    const result = await pool.query(
+      "UPDATE expenses SET description = $1, amount = $2, category = $3 WHERE id = $4 RETURNING *",
+      [description, amount, category, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Expense not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error updating expense:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 // Get total expenses (GET)
 router.get("/total", async (req, res) => {
