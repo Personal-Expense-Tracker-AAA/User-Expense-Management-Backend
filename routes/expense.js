@@ -67,6 +67,27 @@ router.put("/:id", validateExpense, async (req, res) => {
   }
 });
 
+// Delete an expense by ID (DELETE)
+router.delete("/:id", async (req, res) => {
+  const expenseId = req.params.id;
+
+  try {
+    const result = await pool.query(
+      "DELETE FROM expenses WHERE id = $1 RETURNING *",
+      [expenseId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Expense not found" });
+    }
+
+    res.json({ message: "Expense deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting expense:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // Get all expenses (GET)
 router.get("/", async (req, res) => {
   try {
@@ -105,7 +126,7 @@ router.get("/total", async (req, res) => {
 });
 
   // Update an expense (PUT)
-router.put("/:id", async (req, res) => {
+/*router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { description, amount, category } = req.body;
@@ -129,9 +150,10 @@ router.put("/:id", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+*/
 
 // Get total expenses (GET)
-router.get("/total", async (req, res) => {
+/*router.get("/total", async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT SUM(amount) AS total FROM expenses"
@@ -142,5 +164,5 @@ router.get("/total", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-
+*/
 module.exports = router;
