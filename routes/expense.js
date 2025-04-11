@@ -116,7 +116,9 @@ router.get("/category-summary", async (req, res) => {
 // Get total expenses (GET)
 router.get("/total", async (req, res) => {
   try {
-    const result = await pool.query("SELECT SUM(amount) AS total FROM expenses");
+    const result = await pool.query(
+      "SELECT SUM(amount) AS total FROM expenses"
+    );
     // If no expenses, return 0
     res.json({ total: result.rows[0].total || 0 });
   } catch (error) {
@@ -125,7 +127,7 @@ router.get("/total", async (req, res) => {
   }
 });
 
-  // Update an expense (PUT)
+// Update an expense (PUT)
 /*router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
