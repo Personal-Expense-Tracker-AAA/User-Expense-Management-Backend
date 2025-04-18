@@ -3,6 +3,7 @@ CREATE TABLE expenses (
     description TEXT NOT NULL,
     amount NUMERIC(10,2) NOT NULL CHECK (amount > 0),
     category TEXT NOT NULL,
+     date DATE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- Create users table

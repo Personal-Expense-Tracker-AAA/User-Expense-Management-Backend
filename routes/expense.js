@@ -193,4 +193,39 @@ router.get("/total", async (req, res) => {
   }
 });
 
+/**
+ * @route GET /expenses/filter
+ * @desc Filter expenses by category and date range
+ * @access Private
+ */
+router.get("/filter", async (req, res) => {
+  const { category, startDate, endDate } = req.query;
+  const userId = req.user.id;
+
+  let query = `SELECT * FROM expenses WHERE user_id = $1`;
+  const values = [userId];
+  let count = 2;
+
+  if (category) {
+    query += ` AND category = $${count++}`;
+    values.push(category);
+  }
+  if (startDate) {
+    query += ` AND date >= $${count++}`;
+    values.push(startDate);
+  }
+  if (endDate) {
+    query += ` AND date <= $${count++}`;
+    values.push(endDate);
+  }
+
+  try {
+    const { rows } = await pool.query(query, values);
+    res.json(rows);
+  } catch (error) {
+    console.error("[FILTER EXPENSES ERROR]", error);
+    res.status(500).json({ error: "Failed to fetch filtered expenses" });
+  }
+});
+
 module.exports = router;
