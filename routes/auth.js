@@ -16,9 +16,14 @@ router.post(
     body("password").isLength({ min: 6 }),
   ],
   async (req, res) => {
+    // Log the incoming request body
+    console.log("Signup body received:", req.body);
+
     const errors = validationResult(req);
-    if (!errors.isEmpty())
+    if (!errors.isEmpty()) {
+      console.log("Validation failed:", errors.array()); // Log validation errors
       return res.status(400).json({ errors: errors.array() });
+    }
 
     try {
       const { email, password } = req.body;
@@ -29,6 +34,7 @@ router.post(
       );
       res.json({ token: generateToken(result.rows[0]) });
     } catch (error) {
+      console.error("Signup error:", error);
       res.status(400).json({ error: "User already exists" });
     }
   }
