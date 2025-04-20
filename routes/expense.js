@@ -1,9 +1,14 @@
 const express = require("express");
-const { body, validationResult } = require("express-validator"); //import body from express-validator
+const { body, validationResult } = require("express-validator");
 const router = express.Router();
 const pool = require("../helpers/database");
+const { authenticateUser } = require("../helpers/auth");
 
-// Validation and sanitization middleware
+// Protect all routes below this
+router.use(authenticateUser);
+
+// VALIDATION MIDDLEWARE =============================================
+// Validates and sanitizes expense input data
 const validateExpense = [
   body("description")
     .trim()
@@ -20,151 +25,207 @@ const validateExpense = [
     .withMessage("Category is required"),
 ];
 
-// Add an expense (POST) with validation
+// CRUD OPERATIONS ==================================================
+
+/**
+ * @route POST /expenses
+ * @desc Create new expense
+ * @access Private
+ */
 router.post("/", validateExpense, async (req, res) => {
+  // Validate request body
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { description, amount, category } = req.body;
-
   try {
+    // Destructure validated data
+    const { description, amount, category } = req.body;
+
+    // Create new expense with user association
     const result = await pool.query(
-      "INSERT INTO expenses (description, amount, category) VALUES ($1, $2, $3) RETURNING *",
-      [description, amount, category]
+      `INSERT INTO expenses 
+       (description, amount, category, user_id) 
+       VALUES ($1, $2, $3, $4) 
+       RETURNING *`,
+      [description, amount, category, req.user.id]
     );
-    res.json(result.rows[0]);
+
+    res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error(error);
+    console.error("[EXPENSE CREATE ERROR]", error);
     res.status(500).json({ error: "Server error" });
   }
 });
-// Update an expense (PUT)
+
+/**
+ * @route PUT /expenses/:id
+ * @desc Update existing expense
+ * @access Private
+ */
 router.put("/:id", validateExpense, async (req, res) => {
+  // Validate request body
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { description, amount, category } = req.body;
-  const expenseId = req.params.id;
-
   try {
+    // Get expense ID and validated data
+    const expenseId = req.params.id;
+    const { description, amount, category } = req.body;
+
+    // Update expense with user verification
     const result = await pool.query(
-      "UPDATE expenses SET description = $1, amount = $2, category = $3 WHERE id = $4 RETURNING *",
-      [description, amount, category, expenseId]
+      `UPDATE expenses 
+       SET description = $1, amount = $2, category = $3 
+       WHERE id = $4 AND user_id = $5 
+       RETURNING *`,
+      [description, amount, category, expenseId, req.user.id]
     );
 
+    // Handle not found
     if (result.rowCount === 0) {
       return res.status(404).json({ error: "Expense not found" });
     }
 
     res.json(result.rows[0]);
   } catch (error) {
-    console.error(error);
+    console.error("[EXPENSE UPDATE ERROR]", error);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// Delete an expense by ID (DELETE)
+/**
+ * @route DELETE /expenses/:id
+ * @desc Delete existing expense
+ * @access Private
+ */
 router.delete("/:id", async (req, res) => {
-  const expenseId = req.params.id;
-
   try {
+    const expenseId = req.params.id;
+
+    // Delete expense with user verification
     const result = await pool.query(
-      "DELETE FROM expenses WHERE id = $1 RETURNING *",
-      [expenseId]
+      `DELETE FROM expenses 
+       WHERE id = $1 AND user_id = $2 
+       RETURNING *`,
+      [expenseId, req.user.id]
     );
 
+    // Handle not found
     if (result.rowCount === 0) {
       return res.status(404).json({ error: "Expense not found" });
     }
 
     res.json({ message: "Expense deleted successfully" });
   } catch (error) {
-    console.error("Error deleting expense:", error);
+    console.error("[EXPENSE DELETE ERROR]", error);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// Get all expenses (GET)
+// DATA RETRIEVAL ===================================================
+
+/**
+ * @route GET /expenses
+ * @desc Get all expenses for current user
+ * @access Private
+ */
 router.get("/", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM expenses ORDER BY created_at DESC"
+      `SELECT * FROM expenses 
+       WHERE user_id = $1 
+       ORDER BY created_at DESC`,
+      [req.user.id]
     );
     res.json(result.rows);
   } catch (error) {
-    console.error(error);
+    console.error("[EXPENSES FETCH ERROR]", error);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// Get total expenses grouped by category
+/**
+ * @route GET /expenses/category-summary
+ * @desc Get category-wise expense summary
+ * @access Private
+ */
 router.get("/category-summary", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT category, SUM(amount) AS total FROM expenses GROUP BY category ORDER BY total DESC"
+      `SELECT category, SUM(amount) AS total 
+       FROM expenses 
+       WHERE user_id = $1 
+       GROUP BY category 
+       ORDER BY total DESC`,
+      [req.user.id]
     );
     res.json(result.rows);
   } catch (error) {
-    console.error("Error fetching category-wise totals:", error);
+    console.error("[CATEGORY SUMMARY ERROR]", error);
     res.status(500).json({ error: "Server error" });
   }
 });
-// Get total expenses (GET)
+
+/**
+ * @route GET /expenses/total
+ * @desc Get total expenses for current user
+ * @access Private
+ */
 router.get("/total", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT SUM(amount) AS total FROM expenses"
+      `SELECT SUM(amount) AS total 
+       FROM expenses 
+       WHERE user_id = $1`,
+      [req.user.id]
     );
-    // If no expenses, return 0
-    res.json({ total: result.rows[0].total || 0 });
+
+    // Handle empty results
+    const total = result.rows[0].total || 0;
+    res.json({ total: parseFloat(total).toFixed(2) });
   } catch (error) {
-    console.error("Error fetching total expenses:", error);
+    console.error("[TOTAL EXPENSES ERROR]", error);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// Update an expense (PUT)
-/*router.put("/:id", async (req, res) => {
+/**
+ * @route GET /expenses/filter
+ * @desc Filter expenses by category and date range
+ * @access Private
+ */
+router.get("/filter", async (req, res) => {
+  const { category, startDate, endDate } = req.query;
+  const userId = req.user.id;
+
+  let query = `SELECT * FROM expenses WHERE user_id = $1`;
+  const values = [userId];
+  let count = 2;
+
+  if (category) {
+    query += ` AND category = $${count++}`;
+    values.push(category);
+  }
+  if (startDate) {
+    query += ` AND date >= $${count++}`;
+    values.push(startDate);
+  }
+  if (endDate) {
+    query += ` AND date <= $${count++}`;
+    values.push(endDate);
+  }
+
   try {
-    const { id } = req.params;
-    const { description, amount, category } = req.body;
-
-    if (!description || !amount || !category) {
-      return res.status(400).json({ error: "All fields are required" });
-    }
-
-    const result = await pool.query(
-      "UPDATE expenses SET description = $1, amount = $2, category = $3 WHERE id = $4 RETURNING *",
-      [description, amount, category, id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Expense not found" });
-    }
-
-    res.json(result.rows[0]);
+    const { rows } = await pool.query(query, values);
+    res.json(rows);
   } catch (error) {
-    console.error("Error updating expense:", error);
-    res.status(500).json({ error: "Server error" });
+    console.error("[FILTER EXPENSES ERROR]", error);
+    res.status(500).json({ error: "Failed to fetch filtered expenses" });
   }
 });
-*/
 
-// Get total expenses (GET)
-/*router.get("/total", async (req, res) => {
-  try {
-    const result = await pool.query(
-      "SELECT SUM(amount) AS total FROM expenses"
-    );
-    res.json({ total: result.rows[0].total || 0 });
-  } catch (error) {
-    console.error("Error fetching total expenses:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-*/
 module.exports = router;
