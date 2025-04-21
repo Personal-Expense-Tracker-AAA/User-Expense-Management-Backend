@@ -18,6 +18,8 @@ app.use(
     origin: [
       "http://localhost:5500",
       "http://127.0.0.1:5500", // Alternative localhost
+      "https://black-wave-0f6b3a403.6.azurestaticapps.net" // Azure Static Web App URL
+
     
     ],
     credentials: true,
