@@ -29,6 +29,11 @@ app.use(bodyParser.json());
 
 //app.use(cors({ /* your config */ }));
 
+// Add the root route here
+app.get("/", (req, res) => {
+  res.send("Backend deployed successfully on Azure 🚀");
+});
+
 // Authentication middleware
 const authenticate = (req, res, next) => {
   // Handle preflight requests
