@@ -8,6 +8,15 @@ const {
 } = require("../helpers/auth");
 const { body, validationResult } = require("express-validator");
 
+router.post("/test", async (req, res) => {
+  try {
+    res.status(200).json({ error: "success" });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // Signup
 router.post(
   "/signup",
