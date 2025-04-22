@@ -36,7 +36,7 @@ router.post(
 
     try {
       const { email, password } = req.body;
-      const hashedPassword = await hashPassword(password);
+      //const hashedPassword = await hashPassword(password);
       //const result = await pool.query(
        // "INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING *",
       //  [email, hashedPassword]
