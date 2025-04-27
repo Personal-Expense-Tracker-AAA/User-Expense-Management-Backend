@@ -40,8 +40,8 @@ router.post("/", validateExpense, async (req, res) => {
   }
 
   try {
-    // Destructure validated data
-    const { description, amount, category } = req.body;
+    // Destructure validated data// pulling out these 3 fields from the request body.
+   const { description, amount, category } = req.body;
 
     // Create new expense with user association
     const result = await pool.query(

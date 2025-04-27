@@ -21,18 +21,23 @@ router.post(
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-<<<<<<< HEAD
-      return res.status(400).json({ errors: errors.array() });
-    }
-=======
       console.log("Validation failed:", errors.array()); // Log validation errors
       return res.status(400).json({ errors: errors.array() });
     }
 
->>>>>>> 38b81d6d97fa8cbb4f5075667c06ad41756bfed0
     try {
       const { email, password } = req.body;
       const hashedPassword = await hashPassword(password);
+      // Check if user already exists
+      const existingUser = await pool.query(
+        "SELECT * FROM users WHERE email = $1",
+        [email]
+      );
+      if (existingUser.rows.length > 0) {
+        return res.status(400).json({  success: false,
+          error: "email_exists",
+          message: "Email already exists" });
+      }
       const result = await pool.query(
         "INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING *",
         [email, hashedPassword]
@@ -40,7 +45,7 @@ router.post(
       res.json({ token: generateToken(result.rows[0]) });
     } catch (error) {
       console.error("Signup error:", error);
-      res.status(400).json({ error: "User already exists" });
+      res.status(400).json({ error: "Registration failed" });
     }
   }
 );
@@ -48,24 +53,38 @@ router.post(
 // Login
 router.post("/login", async (req, res) => {
   try {
-    console.log("Request body:", req.body); // Debugging line
+    console.log("Request body:", req.body);
     const { email, password } = req.body;
-    const user = await pool.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
+    const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
 
-    if (
-      user.rows.length === 0 ||
-      !(await comparePassword(password, user.rows[0].password_hash))
-    ) {
-      console.log("Login failed. Found user?", user.rows.length > 0);
-      return res.status(401).json({ error: "Invalid credentials" });
+    if (user.rows.length === 0) {
+      return res.status(401).json({ 
+        success: false,
+        error: "Login failed",
+        message: "No account found with this email"
+      });
     }
 
-    res.json({ token: generateToken(user.rows[0]) });
+    const passwordValid = await comparePassword(password, user.rows[0].password_hash);
+    if (!passwordValid) {
+      return res.status(401).json({ 
+        success: false,
+        error: "Login failed",
+        message: "Incorrect password"
+      });
+    }
+
+    res.json({ 
+      success: true,
+      token: generateToken(user.rows[0])
+    });
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ 
+      success: false,
+      error: "Server error",
+      message: "An unexpected error occurred"
+    });
   }
 });
 

@@ -20,14 +20,12 @@ app.use(
       "http://127.0.0.1:5500", // Alternative localhost
     
     ],
-    credentials: true,
+    credentials: true, // not essential unless using cookies
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
 app.use(bodyParser.json());
-
-//app.use(cors({ /* your config */ }));
 
 // Authentication middleware
 const authenticate = (req, res, next) => {
@@ -45,7 +43,7 @@ const authenticate = (req, res, next) => {
 };
 
 // Routes
-app.use("/auth", authRoutes);
+app.use("/auth", authRoutes); //public route
 app.use("/expenses", authenticate, expenseRoutes); // Protected routes
 
 // Server startup with error handling
